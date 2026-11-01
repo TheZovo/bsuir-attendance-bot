@@ -1,0 +1,21 @@
+{
+  "name": "bsuir-attendance-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot & Mini App for university group attendance with IIS BSUIR schedule integration",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f",
+    "docker:tunnel": "docker compose up -d tunnel"
+  },
+  "dependencies": {
+    "grammy": "^1.35.0",
+    "express": "^4.21.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.7"
+  }
+}

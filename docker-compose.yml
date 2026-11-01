@@ -1,0 +1,35 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bsuir-attendance-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./data:/app/data
+    env_file:
+      - .env
+    environment:
+      - PORT=3000
+      - DB_PATH=/app/data/attendance.sqlite
+      - NODE_ENV=production
+    depends_on:
+      - tunnel
+    networks:
+      - bsuir-net
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: bsuir-attendance-tunnel
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    command: tunnel --no-autoupdate --protocol http2 --logfile /data/cloudflared.log --url http://app:3000
+    networks:
+      - bsuir-net
+
+networks:
+  bsuir-net:
+    driver: bridge

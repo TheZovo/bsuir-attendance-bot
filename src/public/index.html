@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Журнал БГУИР</title>
+  <!-- Telegram WebApp SDK -->
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    // Ensure WebApp doesn't freeze on mobile
+    if (window.Telegram && window.Telegram.WebApp) {
+      try {
+        window.Telegram.WebApp.ready();
+      } catch (e) {}
+    }
+  </script>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app" class="app-container">
+
+    <!-- Top App Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo-badge">БГУИР</div>
+        <div class="group-info">
+          <div class="group-title-row">
+            <h1 id="groupTitle">Группа ...</h1>
+            <button id="btnChangeGroupHeader" class="btn-icon" title="Сменить группу">✏️</button>
+          </div>
+          <span id="weekBadge" class="week-pill">... учебная неделя</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div id="userRoleBadge" class="role-badge headman">
+          <span class="role-icon">👑</span>
+          <span class="role-text" id="roleLabelText">Староста</span>
+        </div>
+        <button id="btnApplyHeadman" class="btn-apply-headman" style="display: none;" title="Подать заявку на старосту">
+          📩 Стать старостой
+        </button>
+        <button id="btnOpenLoginModal" class="btn-icon" title="Авторизация через ИИС / Студенческий">🔐</button>
+      </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="nav-tabs" id="navTabs">
+      <button class="nav-tab active" data-tab="day">📅 По дням</button>
+      <button class="nav-tab" data-tab="summary">📊 Сводка</button>
+      <button class="nav-tab" data-tab="schedule">🗓 Расписание</button>
+      <button class="nav-tab" data-tab="students" id="tabStudents">👥 Студенты</button>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main class="app-content">
+
+      <!-- ================= 1. TAB: DAY ATTENDANCE (Журнал по дням) ================= -->
+      <section id="viewDay" class="tab-view active">
+        <!-- Date Navigator Bar -->
+        <div class="date-navigator-card">
+          <div class="date-nav-main">
+            <button id="btnPrevDay" class="btn-nav-day" title="Предыдущий день">◀</button>
+            <div class="date-display-box" id="datePickerTrigger">
+              <span id="dayNameLabel" class="day-name">Четверг</span>
+              <strong id="dateFormattedLabel" class="date-formatted">16 октября</strong>
+              <input type="date" id="nativeDatePicker" class="hidden-date-input">
+            </div>
+            <button id="btnNextDay" class="btn-nav-day" title="Следующий день">▶</button>
+          </div>
+
+          <div class="quick-days-strip" id="quickDaysStrip">
+            <!-- Render Mon..Sat chips -->
+          </div>
+        </div>
+
+        <!-- Today's Schedule Overview for the selected day -->
+        <div class="day-lessons-strip" id="dayLessonsStrip">
+          <div class="lessons-strip-header">
+            <div class="lessons-strip-title">📅 Пары на этот день:</div>
+            <div id="dayPairsCounterBadge" class="pairs-count-badge">...</div>
+          </div>
+          <div id="lessonsChipsList" class="lessons-chips-list">
+            <!-- Injected lesson cards grouped by pair slot -->
+          </div>
+        </div>
+
+        <!-- Mode Toggle & Report Bar -->
+        <div class="day-view-mode-bar">
+          <div class="mode-pills-group">
+            <button type="button" class="btn-mode-pill active" id="btnModeTable" data-mode="table">
+              📑 Таблица пар
+            </button>
+            <button type="button" class="btn-mode-pill" id="btnModeRoster" data-mode="roster">
+              👥 Кто был / не был
+            </button>
+          </div>
+          <button type="button" id="btnCopyDayReport" class="btn-copy-report" title="Скопировать рапортичку за этот день для старостата/куратора">
+            📋 Скопировать рапортичку
+          </button>
+        </div>
+
+        <!-- Filter & Actions Bar -->
+        <div class="day-actions-bar">
+          <div class="search-wrap">
+            <input type="text" id="dayStudentSearch" placeholder="🔍 Поиск студента..." class="text-input search-input">
+          </div>
+          <div class="actions-wrap">
+            <select id="daySubgroupFilter" class="select-control">
+              <option value="0">Все подгруппы</option>
+              <option value="1">1-я п/г</option>
+              <option value="2">2-я п/г</option>
+            </select>
+            <button id="btnDayAllPresent" class="btn-success btn-small" title="Отметить всех присутствующими на этот день">
+              ✅ Все были
+            </button>
+          </div>
+        </div>
+
+        <!-- Excused Absence Quick Buttons Bar -->
+        <div class="reasons-quick-bar">
+          <span class="reasons-bar-label">Уважительная причина (УВ):</span>
+          <div class="reasons-buttons-group">
+            <button type="button" class="btn-reason-trigger btn-reason-orvi" data-reason="ОРВИ" title="Оформить ОРВИ (больничный ИИС)">
+              🤒 ОРВИ
+            </button>
+            <button type="button" class="btn-reason-trigger btn-reason-spravka" data-reason="Справка" title="Оформить медсправку">
+              📋 Справка
+            </button>
+            <button type="button" class="btn-reason-trigger btn-reason-zayavlenie" data-reason="Заявление" title="Оформить заявление">
+              📝 Заявление
+            </button>
+            <button type="button" class="btn-reason-trigger btn-reason-event" data-reason="Мероприятие" title="Оформить мероприятие / соревнование">
+              🎪 Мероприятие
+            </button>
+          </div>
+        </div>
+
+        <!-- Day Table Container -->
+        <div class="day-table-card">
+          <div id="dayLoading" class="loading-state" style="display: none;">
+            <div class="spinner"></div>
+            <span>Загрузка расписания и отметок...</span>
+          </div>
+
+          <!-- Mode 1: Table Sheet View -->
+          <div class="table-responsive" id="dayTableWrap">
+            <table class="attendance-table" id="dayTable">
+              <thead>
+                <tr id="dayTableHeaderRow">
+                  <th class="sticky-col">Студент</th>
+                  <!-- Dynamic lesson columns for the day -->
+                  <th class="col-day-total">Итог дня</th>
+                </tr>
+              </thead>
+              <tbody id="dayTableBody">
+                <!-- Injected student rows -->
+              </tbody>
+            </table>
+          </div>
+
+          <!-- Mode 2: Roster View (Кто был, а кто нет) -->
+          <div id="dayRosterWrap" class="day-roster-view" style="display: none;">
+            <!-- Summary Stats Counters Bar -->
+            <div class="roster-stats-grid">
+              <div class="roster-stat-card present" id="statCardPresent">
+                <span class="stat-number" id="rosterCountPresent">0</span>
+                <span class="stat-label">🟢 Был(и) на всех</span>
+              </div>
+              <div class="roster-stat-card absent" id="statCardAbsent">
+                <span class="stat-number" id="rosterCountAbsent">0</span>
+                <span class="stat-label">🔴 Не был(и) (НБ)</span>
+              </div>
+              <div class="roster-stat-card valid" id="statCardValid">
+                <span class="stat-number" id="rosterCountValid">0</span>
+                <span class="stat-label">🟡 Уважительная (УВ)</span>
+              </div>
+            </div>
+
+            <!-- Quick Filter Pills -->
+            <div class="roster-filter-pills">
+              <button type="button" class="btn-roster-filter active" data-filter="all">Все (<span id="countPillAll">0</span>)</button>
+              <button type="button" class="btn-roster-filter" data-filter="absent">🔴 Только отсутствующие (<span id="countPillAbsent">0</span>)</button>
+              <button type="button" class="btn-roster-filter" data-filter="valid">🟡 Только УВ (<span id="countPillValid">0</span>)</button>
+              <button type="button" class="btn-roster-filter" data-filter="present">🟢 Присутствующие (<span id="countPillPresent">0</span>)</button>
+            </div>
+
+            <!-- Cards List -->
+            <div id="rosterStudentsList" class="roster-students-list">
+              <!-- Rendered student attendance cards -->
+            </div>
+          </div>
+
+          <div id="noLessonsNotice" class="no-lessons-box" style="display: none;">
+            🎉 В этот день в расписании пар нет. Можно отдыхать!
+          </div>
+        </div>
+
+        <!-- Quick Status Legend -->
+        <div class="legend-card">
+          <span class="legend-title">Статусы:</span>
+          <span class="badge badge-present">Б</span> Был &nbsp;
+          <span class="badge badge-absent">НБ</span> Пропуск (2ч) &nbsp;
+          <span class="badge badge-valid">УВ</span> Уважительная &nbsp;
+          <span class="badge badge-late">Оп</span> Опоздал
+        </div>
+      </section>
+
+      <!-- ================= 2. TAB: SUMMARY (Сводка за семестр) ================= -->
+      <section id="viewSummary" class="tab-view">
+        <div class="summary-top-card">
+          <div class="kpi-grid">
+            <div class="kpi-card danger">
+              <span class="kpi-value" id="kpiTotalNb">0</span>
+              <span class="kpi-label">Часов НБ</span>
+            </div>
+            <div class="kpi-card warning">
+              <span class="kpi-value" id="kpiTotalUv">0</span>
+              <span class="kpi-label">Часов УВ</span>
+            </div>
+            <div class="kpi-card total">
+              <span class="kpi-value" id="kpiTotalMissed">0</span>
+              <span class="kpi-label">Всего пропусков (ч)</span>
+            </div>
+          </div>
+          <div class="summary-actions-row">
+            <input type="text" id="summarySearch" placeholder="🔍 Поиск по ведомости..." class="text-input">
+            <button id="btnExportCsv" class="btn-secondary">📥 Скачать CSV</button>
+          </div>
+        </div>
+
+        <div class="summary-list-card">
+          <h3>Ведомость посещаемости группы</h3>
+          <div id="summaryStudentsList" class="summary-students-list">
+            <!-- Student cards with progress and details -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 3. TAB: SCHEDULE (Расписание ИИС БГУИР) ================= -->
+      <section id="viewSchedule" class="tab-view">
+        <div class="card">
+          <div class="card-header">
+            <h3>Расписание занятий ИИС БГУИР</h3>
+            <button id="btnSyncBsuir" class="btn-small">🔄 Обновить с БГУИР</button>
+          </div>
+
+          <div class="schedule-days-nav" id="scheduleDaysNav">
+            <button class="day-tab active" data-day="0">Пн</button>
+            <button class="day-tab" data-day="1">Вт</button>
+            <button class="day-tab" data-day="2">Ср</button>
+            <button class="day-tab" data-day="3">Чт</button>
+            <button class="day-tab" data-day="4">Пт</button>
+            <button class="day-tab" data-day="5">Сб</button>
+          </div>
+
+          <div id="scheduleLessonsList" class="schedule-lessons-list">
+            <!-- Render lessons -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= 4. TAB: STUDENTS (Управление списком) ================= -->
+      <section id="viewStudents" class="tab-view">
+        <div class="card">
+          <div class="card-header">
+            <h3>👥 Список группы</h3>
+            <div style="display: flex; gap: 6px;">
+              <button id="btnSyncStudentsIis" class="btn-secondary btn-small">🔄 Из ИИС</button>
+              <button id="btnOpenBulkModal" class="btn-primary btn-small">➕ Вставить список</button>
+            </div>
+          </div>
+
+          <div class="add-single-student-form">
+            <input type="text" id="newStudentName" placeholder="ФИО нового студента" class="text-input">
+            <select id="newStudentSubgroup" class="select-control">
+              <option value="0">Вся группа</option>
+              <option value="1">1-я п/г</option>
+              <option value="2">2-я п/г</option>
+            </select>
+            <button id="btnAddSingleStudent" class="btn-success btn-small">Добавить</button>
+          </div>
+
+          <div id="studentsListContainer" class="students-list">
+            <!-- Render students list -->
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h3>📚 Добавить свой предмет</h3>
+          </div>
+          <form id="customSubjectForm" class="custom-subject-form">
+            <div class="form-row">
+              <input type="text" id="customSubjName" placeholder="Краткое назв. (напр. Военка)" required class="text-input">
+              <select id="customSubjType" class="select-control">
+                <option value="ПЗ">ПЗ (Практика)</option>
+                <option value="ЛК">ЛК (Лекция)</option>
+                <option value="ЛР">ЛР (Лабораторная)</option>
+              </select>
+            </div>
+            <div class="form-row">
+              <input type="text" id="customSubjTeacher" placeholder="Преподаватель" class="text-input">
+              <button type="submit" class="btn-primary">Сохранить предмет</button>
+            </div>
+          </form>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Modal: Bulk Student Import -->
+    <div id="bulkModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-window">
+        <div class="modal-header">
+          <h3>Вставить список группы</h3>
+          <button id="btnCloseBulkModal" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="hint">Вставьте список студентов из ведомости или деканата (каждое ФИО с новой строки):</p>
+          <textarea id="bulkStudentsText" class="bulk-textarea" rows="10" placeholder="1. Абрамович Кирилл Дмитриевич
+2. Белов Артём Сергеевич
+3. Васильев Максим Юрьевич..."></textarea>
+        </div>
+        <div class="modal-footer">
+          <button id="btnCancelBulk" class="btn-secondary">Отмена</button>
+          <button id="btnSaveBulk" class="btn-primary">Импортировать</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Valid Reason (ОРВИ / Справка / Заявление / Мероприятие) -->
+    <div id="validReasonModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-window">
+        <div class="modal-header">
+          <h3 id="modalReasonTitle">🏥 Оформление уважительной причины</h3>
+          <button id="btnCloseReasonModal" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="hint">Выберите студента, причину и период. Всем занятиям студента в эти даты автоматически проставится <strong>УВ (2 часа за пару)</strong>:</p>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label style="font-size: 11px; color: var(--hint-color); display: block; margin-bottom: 4px;">Студент:</label>
+            <select id="reasonStudentSelect" class="select-control full-width"></select>
+          </div>
+
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label style="font-size: 11px; color: var(--hint-color); display: block; margin-bottom: 4px;">Тип уважительной причины:</label>
+            <select id="reasonTypeSelect" class="select-control full-width">
+              <option value="ОРВИ">🤒 ОРВИ (больничный ИИС БГУИР)</option>
+              <option value="Справка">📋 Справка (медицинская справка из поликлиники)</option>
+              <option value="Заявление">📝 Заявление (семейные обстоятельства / деканат)</option>
+              <option value="Мероприятие">🎪 Мероприятие (соревнования, олимпиада, форум)</option>
+            </select>
+          </div>
+
+          <div style="display: flex; gap: 8px; margin-bottom: 8px;">
+            <div style="flex: 1;">
+              <label style="font-size: 11px; color: var(--hint-color); display: block; margin-bottom: 4px;">С даты:</label>
+              <input type="date" id="reasonStartDate" class="text-input full-width">
+            </div>
+            <div style="flex: 1;">
+              <label style="font-size: 11px; color: var(--hint-color); display: block; margin-bottom: 4px;">По дату:</label>
+              <input type="date" id="reasonEndDate" class="text-input full-width">
+            </div>
+          </div>
+
+          <div class="quick-dates-row" style="display: flex; gap: 6px; margin-bottom: 12px;">
+            <button type="button" class="btn-chip" id="btnDateToday">Только сегодня</button>
+            <button type="button" class="btn-chip" id="btnDate3Days">+3 дня</button>
+            <button type="button" class="btn-chip" id="btnDateWeek">+7 дней</button>
+          </div>
+
+          <div class="form-group">
+            <label id="reasonNoteLabel" style="font-size: 11px; color: var(--hint-color); display: block; margin-bottom: 4px;">Примечание / подтверждение (необязательно):</label>
+            <input type="text" id="reasonNote" class="text-input full-width" placeholder="напр. Электронный больничный ИИС">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="btnCancelReason" class="btn-secondary">Отмена</button>
+          <button id="btnConfirmReason" class="btn-primary">Подтвердить и проставить УВ</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal: Student Authentication (IIS Only) -->
+    <div id="loginModal" class="modal-backdrop" style="display: none;">
+      <div class="modal-window">
+        <div class="modal-header">
+          <h3>🔑 Вход через ИИС БГУИР</h3>
+          <button id="btnCloseLoginModal" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="hint">Введите логин и пароль от личного кабинета ИИС БГУИР (<code>iis.bsuir.by</code>) для автоматической загрузки ФИО, студенческого билета и группы:</p>
+          <div class="form-group" style="margin-bottom: 8px;">
+            <input type="text" id="iisUsernameInput" class="text-input full-width" placeholder="Логин или номер студенческого">
+          </div>
+          <div class="form-group" style="margin-bottom: 8px;">
+            <input type="password" id="iisPasswordInput" class="text-input full-width" placeholder="Пароль ИИС БГУИР">
+          </div>
+          <button id="btnSubmitIisLogin" class="btn-primary full-width" style="margin-top: 6px;">Войти и привязать профиль</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast" style="display: none;"></div>
+  </div>
+
+  <script src="js/app.js"></script>
+</body>
+</html>

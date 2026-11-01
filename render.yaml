@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: bsuir-attendance-bot
+    env: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install
+    startCommand: node src/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: 22.14.0
+      - key: PORT
+        value: 10000
+      - key: DEFAULT_GROUP
+        value: "562001"
+      - key: MAIN_HEADMAN_ID
+        value: "6567758362"
+      - key: DB_PATH
+        value: /var/data/attendance.sqlite
+      # BOT_TOKEN and WEBAPP_URL will be set in Render dashboard or sync automatically:
+      - key: BOT_TOKEN
+        sync: false
+      - key: WEBAPP_URL
+        sync: false
+    disk:
+      name: attendance-data
+      mountPath: /var/data
+      sizeGB: 1
